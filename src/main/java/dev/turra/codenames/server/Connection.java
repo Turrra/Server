@@ -1,0 +1,73 @@
+package dev.turra.codenames.server;
+
+import dev.turra.codenames.common.network.Packet;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+
+public class Connection implements Runnable{
+
+	private Socket socket;
+	private ObjectInputStream in;
+	private ObjectOutputStream out;
+
+	public int id;
+	private PacketListener listener;
+	private boolean running = false;
+
+	public Connection(Socket socket, int id) {
+		this.socket = socket;
+		this.id = id;
+
+		try {
+			out = new ObjectOutputStream(socket.getOutputStream());
+			in = new ObjectInputStream(socket.getInputStream());
+			listener = new PacketListener();
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void run() {
+		try {
+			running = true;
+
+			while(running) {
+				try {
+					Packet packet = (Packet) in.readObject();
+					listener.received(packet, this);
+				}catch(ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}catch(IOException e) {
+			close();
+			System.err.println("UserID " + id + " dropped connection: " + e.getMessage());
+		}
+	}
+
+	public void close() {
+		try {
+			running = false;
+			in.close();
+			out.close();
+			socket.close();
+			ConnectionHandler.connections.remove(id);
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void sendObject(Object packet) {
+		try {
+			out.writeObject(packet);
+			out.flush();
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+}
