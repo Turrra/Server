@@ -14,7 +14,7 @@ public class Connection implements Runnable{
 	private ObjectOutputStream out;
 
 	public int id;
-	private PacketListener listener;
+	private IPacketListener listener;
 	private boolean running = false;
 
 	public Connection(Socket socket, int id) {
@@ -24,7 +24,7 @@ public class Connection implements Runnable{
 		try {
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
-			listener = new PacketListener();
+			listener = Main.manager;
 		}catch(IOException e) {
 			e.printStackTrace();
 		}
@@ -40,7 +40,7 @@ public class Connection implements Runnable{
 					Packet packet = (Packet) in.readObject();
 					listener.received(packet, this);
 				}catch(ClassNotFoundException e) {
-					e.printStackTrace();
+					System.err.println("Could not find packet: " + e.getMessage());
 				}
 			}
 		}catch(IOException e) {
@@ -55,13 +55,13 @@ public class Connection implements Runnable{
 			in.close();
 			out.close();
 			socket.close();
-			ConnectionHandler.connections.remove(id);
+			Main.manager.playerQuit(id);
 		}catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public void sendObject(Object packet) {
+	public void sendPacket(Object packet) {
 		try {
 			out.writeObject(packet);
 			out.flush();
