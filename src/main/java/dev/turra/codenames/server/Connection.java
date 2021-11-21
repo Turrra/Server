@@ -44,7 +44,6 @@ public class Connection implements Runnable{
 				}
 			}
 		}catch(IOException e) {
-			close();
 			System.err.println("UserID " + id + " dropped connection: " + e.getMessage());
 		}
 	}
