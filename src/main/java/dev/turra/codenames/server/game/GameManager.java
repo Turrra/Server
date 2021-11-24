@@ -144,9 +144,18 @@ public class GameManager implements IPacketListener {
 		} else if (packet instanceof PacketServerLogin p) {
 			players.put(connection.id, new Player(connection, p.getName()));
 			sendCardPackets(players.get(connection.id));
+
+			// Send packet with all players in the game
+			for(Team team : Team.values()) {
+				for(Role role : Role.values()) {
+					String players = this.players.values().stream().filter(player -> player.team == team).filter(player -> player.role == role).map(player -> player.name).collect(Collectors.joining(", "));
+
+					PacketClientUpdatePlayers playerList = new PacketClientUpdatePlayers(team, role, players);
+					sendToAll(playerList);
+				}
+			}
 		} else if (packet instanceof PacketServerTeamRole p) {
 			switchTeam(connection.id, p.getTeam(), p.getRole());
-			sendCardPackets(players.get(connection.id));
 		} else if (packet instanceof PacketServerCardClick p) {
 			clickCard(connection, p);
 		} else if (packet instanceof PacketServerHint p) {
