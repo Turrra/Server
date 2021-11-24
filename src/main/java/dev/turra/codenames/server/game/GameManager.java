@@ -24,7 +24,6 @@ public class GameManager implements IPacketListener {
 
 	private Team currentTurn;
 
-	private String hint;
 	private int totalNumberOfGuesses;
 	private int numberOfGuesses;
 
@@ -162,7 +161,6 @@ public class GameManager implements IPacketListener {
 		if (players.get(connection.id).team != currentTurn)
 			return;
 
-		hint = p.getHint();
 		totalNumberOfGuesses = p.getWordAmount()+1;
 		numberOfGuesses = 0;
 
