@@ -3,18 +3,13 @@ package dev.turra.codenames.server.game;
 import dev.turra.codenames.common.Role;
 import dev.turra.codenames.common.Team;
 import dev.turra.codenames.common.network.Packet;
-import dev.turra.codenames.common.network.cb.PacketClientCard;
-import dev.turra.codenames.common.network.cb.PacketClientCardReveal;
-import dev.turra.codenames.common.network.cb.PacketClientChat;
-import dev.turra.codenames.common.network.cb.PacketClientUpdatePlayers;
-import dev.turra.codenames.common.network.sb.PacketServerCardClick;
-import dev.turra.codenames.common.network.sb.PacketServerChat;
-import dev.turra.codenames.common.network.sb.PacketServerLogin;
-import dev.turra.codenames.common.network.sb.PacketServerTeamRole;
+import dev.turra.codenames.common.network.cb.*;
+import dev.turra.codenames.common.network.sb.*;
 import dev.turra.codenames.common.CardColor;
 import dev.turra.codenames.server.Connection;
 import dev.turra.codenames.server.IPacketListener;
 
+import java.awt.*;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
@@ -28,6 +23,12 @@ public class GameManager implements IPacketListener {
 	private Card[][] board = new Card[5][5];
 
 	private Team currentTurn;
+
+	private String hint;
+	private int totalNumberOfGuesses;
+	private int numberOfGuesses;
+
+	private boolean debug = true;
 
 	public GameManager() {
 
@@ -149,16 +150,36 @@ public class GameManager implements IPacketListener {
 			sendCardPackets(players.get(connection.id));
 		} else if (packet instanceof PacketServerCardClick p) {
 			clickCard(connection, p);
+		} else if (packet instanceof PacketServerHint p) {
+			receiveHint(connection, p);
 		}
+	}
+
+	private void receiveHint(Connection connection, PacketServerHint p) {
+		if (players.get(connection.id).role != Role.SPYMASTER)
+			return;
+
+		if (players.get(connection.id).team != currentTurn)
+			return;
+
+		hint = p.getHint();
+		totalNumberOfGuesses = p.getWordAmount()+1;
+		numberOfGuesses = 0;
+
+		announce(currentTurn.getName() + " team is guessing", currentTurn.getColor().getColor());
+		PacketClientHint hintPacket = new PacketClientHint(p.getHint(), p.getWordAmount(), players.get(connection.id).team);
+		sendToAll(hintPacket);
+		debug("Hint: " + p.getHint());
 	}
 
 	private void clickCard(Connection connection, PacketServerCardClick p) {
 		Card card = board[p.getX()][p.getY()];
+		Player player = players.get(connection.id);
 
-		if(players.get(connection.id).role != Role.OPERATIVE)
+		if (player.role != Role.OPERATIVE)
 			return;
 
-		if(players.get(connection.id).team != currentTurn)
+		if (player.team != currentTurn)
 			return;
 
 		if (card.isRevealed())
@@ -166,8 +187,37 @@ public class GameManager implements IPacketListener {
 
 		PacketClientCardReveal revealPacket = new PacketClientCardReveal(p.getX(), p.getY(), card.getColor());
 		sendToAll(revealPacket);
-
 		card.setRevealed(true);
+
+		if (card.getColor() != player.team.getColor() || card.getColor() == CardColor.CITIZEN) {
+			debug("Player " + player.name + " clicked on " + card.getWord() + " of " + card.getColor() + " color");
+			switchTurn();
+		} else if (card.getColor() == CardColor.ASSASSIN) {
+			debug("Player " + player.name + " clicked on the assassin");
+			Team winningTeam = currentTurn == Team.BLUE ? Team.RED : Team.BLUE;
+			announce(winningTeam.getName() + " team won!", winningTeam.getColor().getColor());
+			return;
+		}
+		numberOfGuesses++;
+		if(numberOfGuesses == totalNumberOfGuesses) {
+			switchTurn();
+		}
+	}
+
+	private void switchTurn() {
+		currentTurn = currentTurn == Team.BLUE ? Team.RED : Team.BLUE;
+		announce(currentTurn.getName() + " team is giving a hint", currentTurn.getColor().getColor());
+	}
+
+	private void announce(String message, Color color) {
+		PacketClientAnnouncer announcer = new PacketClientAnnouncer(message, color);
+		sendToAll(announcer);
+	}
+
+	private void debug(String debug){
+		if(this.debug){
+			System.out.println(debug);
+		}
 	}
 
 	/**
