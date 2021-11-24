@@ -123,11 +123,11 @@ public class GameManager implements IPacketListener {
 	public void playerQuit(int id) {
 		Team team = players.get(id).team;
 		Role role = players.get(id).role;
+		players.remove(id);
+
 		String updatedList = this.players.values().stream().filter(p -> p.team == team).filter(p -> p.role == role).map(p -> p.name).collect(Collectors.joining(", "));
 		PacketClientUpdatePlayers updateOldPacket = new PacketClientUpdatePlayers(team, role, updatedList);
 		sendToAll(updateOldPacket);
-
-		players.remove(id);
 	}
 
 	public void sendToAll(Packet packet) {

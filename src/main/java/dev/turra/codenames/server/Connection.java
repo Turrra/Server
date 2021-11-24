@@ -62,6 +62,9 @@ public class Connection implements Runnable{
 	}
 
 	public void sendPacket(Object packet) {
+		if(socket.isClosed())
+			return;
+
 		try {
 			out.writeObject(packet);
 			out.flush();
