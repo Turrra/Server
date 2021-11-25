@@ -146,8 +146,8 @@ public class GameManager implements IPacketListener {
 			sendCardPackets(players.get(connection.id));
 
 			// Send packet with all players in the game
-			for(Team team : Team.values()) {
-				for(Role role : Role.values()) {
+			for (Team team : Team.values()) {
+				for (Role role : Role.values()) {
 					String players = this.players.values().stream().filter(player -> player.team == team).filter(player -> player.role == role).map(player -> player.name).collect(Collectors.joining(", "));
 
 					PacketClientUpdatePlayers playerList = new PacketClientUpdatePlayers(team, role, players);
@@ -155,6 +155,7 @@ public class GameManager implements IPacketListener {
 				}
 			}
 			announce(currentTurn.getName() + " team is giving a hint", currentTurn.getColor().getColor());
+			updateScores(players.get(connection.id));
 		} else if (packet instanceof PacketServerTeamRole p) {
 			switchTeam(connection.id, p.getTeam(), p.getRole());
 			sendCardPackets(players.get(connection.id));
@@ -172,7 +173,7 @@ public class GameManager implements IPacketListener {
 		if (players.get(connection.id).team != currentTurn)
 			return;
 
-		totalNumberOfGuesses = p.getWordAmount()+1;
+		totalNumberOfGuesses = p.getWordAmount() + 1;
 		numberOfGuesses = 0;
 
 		announce(currentTurn.getName() + " team is guessing", currentTurn.getColor().getColor());
@@ -197,6 +198,7 @@ public class GameManager implements IPacketListener {
 		PacketClientCardReveal revealPacket = new PacketClientCardReveal(p.getX(), p.getY(), card.getColor());
 		sendToAll(revealPacket);
 		card.setRevealed(true);
+		updateScores(null);
 		if (card.getColor() == CardColor.ASSASSIN) {
 			debug("Player " + player.name + " clicked on the assassin");
 			Team winningTeam = currentTurn == Team.BLUE ? Team.RED : Team.BLUE;
@@ -208,26 +210,40 @@ public class GameManager implements IPacketListener {
 		}
 
 		// Check if they won
-		if(getRemainingCards(currentTurn) == 0) {
+		if (getRemainingCards(currentTurn) == 0) {
 			announce(currentTurn.getName() + " team won!", currentTurn.getColor().getColor());
 			System.exit(0);
 		}
 		numberOfGuesses++;
-		if(numberOfGuesses == totalNumberOfGuesses) {
+		if (numberOfGuesses == totalNumberOfGuesses) {
 			switchTurn();
+		}
+	}
+
+	private void updateScores(Player player) {
+		PacketClientUpdateScore bluePacket = new PacketClientUpdateScore(Team.BLUE, getRemainingCards(Team.BLUE));
+		PacketClientUpdateScore redPacket = new PacketClientUpdateScore(Team.RED, getRemainingCards(Team.RED));
+		if (player != null) {
+			player.connection.sendPacket(bluePacket);
+			player.connection.sendPacket(redPacket);
+		} else {
+			sendToAll(bluePacket);
+			sendToAll(redPacket);
 		}
 	}
 
 	private int getRemainingCards(Team team) {
 		int count = 0;
-        for(Card[] row : board) {
-            for(Card card : row) {
-                if(card.getColor() == team.getColor()) {
-                    count++;
-                }
-            }
-        }
-        return count;
+		for (Card[] row : board) {
+			for (Card card : row) {
+				if (card.getColor() == team.getColor()) {
+					if(!card.isRevealed()) {
+						count++;
+					}
+				}
+			}
+		}
+		return count;
 	}
 
 	private void switchTurn() {
@@ -240,8 +256,8 @@ public class GameManager implements IPacketListener {
 		sendToAll(announcer);
 	}
 
-	private void debug(String debug){
-		if(this.debug){
+	private void debug(String debug) {
+		if (this.debug) {
 			System.out.println(debug);
 		}
 	}
