@@ -154,8 +154,10 @@ public class GameManager implements IPacketListener {
 					sendToAll(playerList);
 				}
 			}
+			announce(currentTurn.getName() + " team is giving a hint", currentTurn.getColor().getColor());
 		} else if (packet instanceof PacketServerTeamRole p) {
 			switchTeam(connection.id, p.getTeam(), p.getRole());
+			sendCardPackets(players.get(connection.id));
 		} else if (packet instanceof PacketServerCardClick p) {
 			clickCard(connection, p);
 		} else if (packet instanceof PacketServerHint p) {
@@ -195,20 +197,37 @@ public class GameManager implements IPacketListener {
 		PacketClientCardReveal revealPacket = new PacketClientCardReveal(p.getX(), p.getY(), card.getColor());
 		sendToAll(revealPacket);
 		card.setRevealed(true);
-
-		if (card.getColor() != player.team.getColor() || card.getColor() == CardColor.CITIZEN) {
-			debug("Player " + player.name + " clicked on " + card.getWord() + " of " + card.getColor() + " color");
-			switchTurn();
-		} else if (card.getColor() == CardColor.ASSASSIN) {
+		if (card.getColor() == CardColor.ASSASSIN) {
 			debug("Player " + player.name + " clicked on the assassin");
 			Team winningTeam = currentTurn == Team.BLUE ? Team.RED : Team.BLUE;
 			announce(winningTeam.getName() + " team won!", winningTeam.getColor().getColor());
-			return;
+			System.exit(0);
+		} else if (card.getColor() != player.team.getColor() || card.getColor() == CardColor.CITIZEN) {
+			debug("Player " + player.name + " clicked on " + card.getWord() + " of " + card.getColor() + " color");
+			switchTurn();
+		}
+
+		// Check if they won
+		if(getRemainingCards(currentTurn) == 0) {
+			announce(currentTurn.getName() + " team won!", currentTurn.getColor().getColor());
+			System.exit(0);
 		}
 		numberOfGuesses++;
 		if(numberOfGuesses == totalNumberOfGuesses) {
 			switchTurn();
 		}
+	}
+
+	private int getRemainingCards(Team team) {
+		int count = 0;
+        for(Card[] row : board) {
+            for(Card card : row) {
+                if(card.getColor() == team.getColor()) {
+                    count++;
+                }
+            }
+        }
+        return count;
 	}
 
 	private void switchTurn() {
