@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ * Represents the server of the entire game
+ */
 public class Server implements Runnable{
 
 	private int port;
@@ -11,6 +14,10 @@ public class Server implements Runnable{
 	private boolean running = false;
 	private int id = 0;
 
+	/**
+	 * Creates a server with a port
+	 * @param port
+	 */
 	public Server(int port) {
 		this.port = port;
 
@@ -21,10 +28,16 @@ public class Server implements Runnable{
 		}
 	}
 
+	/**
+	 * Starts the server thread
+	 */
 	public void start() {
 		new Thread(this).start();
 	}
 
+	/**
+	 * Allows new connections to the server
+	 */
 	@Override
 	public void run() {
 		running = true;
@@ -41,6 +54,10 @@ public class Server implements Runnable{
 		shutdown();
 	}
 
+	/**
+	 * Initializes a new connection with a socket
+	 * @param socket
+	 */
 	private void initSocket(Socket socket) {
 		Connection connection = new Connection(socket,id);
 //		ConnectionHandler.connections.put(id,connection);
@@ -48,6 +65,9 @@ public class Server implements Runnable{
 		id++;
 	}
 
+	/**
+	 * Shuts down the server
+	 */
 	public void shutdown() {
 		running = false;
 

@@ -15,6 +15,9 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Manages the game state. Most of the game mechanics are handled here.
+ */
 public class GameManager implements IPacketListener {
 
 	private List<String> words = new ArrayList<>();
@@ -49,6 +52,12 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Handles when a player joins or switches a team
+	 * @param id The player's id
+	 * @param team The player's new team
+	 * @param role The player's new role
+	 */
 	public void switchTeam(int id, Team team, Role role) {
 		Player player = players.get(id);
 		Team oldTeam = player.team;
@@ -71,6 +80,9 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Generates the board with 25 cards that have random words and colors
+	 */
 	public void generateBoard() {
 		// Get 25 random unique words from the word bank
 		List<String> selected = new Random().ints(0, words.size()).distinct().limit(25).mapToObj(words::get).collect(Collectors.toList());
@@ -102,6 +114,10 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Sends all cards to the player
+	 * @param playerToSend Player to send card packets to. Used to determine the player's role
+	 */
 	public void sendCardPackets(Player playerToSend) {
 		for (int i = 0; i < 5; i++) {
 			for (int j = 0; j < 5; j++) {
@@ -119,7 +135,10 @@ public class GameManager implements IPacketListener {
 
 	}
 
-	// Handle player leaving the game
+	/**
+	 * Handle player leaving the game
+	 * @param id The player's id
+	 */
 	public void playerQuit(int id) {
 		Team team = players.get(id).team;
 		Role role = players.get(id).role;
@@ -130,18 +149,24 @@ public class GameManager implements IPacketListener {
 		sendToAll(updateOldPacket);
 	}
 
+	/**
+	 * Sends a packet to all players
+	 * @param packet The packet to send
+	 */
 	public void sendToAll(Packet packet) {
 		for (Player player : players.values()) {
 			player.connection.sendPacket(packet);
 		}
 	}
 
+	/**
+	 * Handles the packets that were received by all clients
+	 * @param packet The packet received
+	 * @param connection The connection that sent the packet
+	 */
 	@Override
 	public void received(Packet packet, Connection connection) {
-		if (packet instanceof PacketServerChat p) {
-			System.out.println(players.get(connection.id).name + ": " + p.getMessage());
-			sendToAll(new PacketClientChat(players.get(connection.id).name, p.getMessage()));
-		} else if (packet instanceof PacketServerLogin p) {
+		if (packet instanceof PacketServerLogin p) {
 			players.put(connection.id, new Player(connection, p.getName()));
 			sendCardPackets(players.get(connection.id));
 
@@ -166,6 +191,11 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Handles {@link PacketServerHint} packets
+	 * @param connection The connection that sent the packet
+	 * @param p The packet
+	 */
 	private void receiveHint(Connection connection, PacketServerHint p) {
 		if (players.get(connection.id).role != Role.SPYMASTER)
 			return;
@@ -182,6 +212,11 @@ public class GameManager implements IPacketListener {
 		debug("Hint: " + p.getHint());
 	}
 
+	/**
+	 * Handles {@link PacketServerCardClick} packets
+	 * @param connection The connection that sent the packet
+	 * @param p The packet
+	 */
 	private void clickCard(Connection connection, PacketServerCardClick p) {
 		Card card = board[p.getX()][p.getY()];
 		Player player = players.get(connection.id);
@@ -220,6 +255,10 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Send the updated score to the client/s
+	 * @param player Who to send the score packets to. If this is null, the packets will be sent to all players.
+	 */
 	private void updateScores(Player player) {
 		PacketClientUpdateScore bluePacket = new PacketClientUpdateScore(Team.BLUE, getRemainingCards(Team.BLUE));
 		PacketClientUpdateScore redPacket = new PacketClientUpdateScore(Team.RED, getRemainingCards(Team.RED));
@@ -232,6 +271,11 @@ public class GameManager implements IPacketListener {
 		}
 	}
 
+	/**
+	 * Get the amount of unrevealed cards left in the board for a team
+	 * @param team The team to get the amount of unrevealed cards for
+	 * @return The amount of unrevealed cards left in the board for the team
+	 */
 	private int getRemainingCards(Team team) {
 		int count = 0;
 		for (Card[] row : board) {
@@ -246,26 +290,31 @@ public class GameManager implements IPacketListener {
 		return count;
 	}
 
+	/**
+	 * Switch the turn to the next team
+	 */
 	private void switchTurn() {
 		currentTurn = currentTurn == Team.BLUE ? Team.RED : Team.BLUE;
 		announce(currentTurn.getName() + " team is giving a hint", currentTurn.getColor().getColor());
 	}
 
+	/**
+	 * Sends the announcement packet to all players
+	 * @param message The message to send
+	 * @param color The color of the message
+	 */
 	private void announce(String message, Color color) {
 		PacketClientAnnouncer announcer = new PacketClientAnnouncer(message, color);
 		sendToAll(announcer);
 	}
 
+	/**
+	 * For debugging purposes. Prints a message to the console
+	 * @param debug Message to print
+	 */
 	private void debug(String debug) {
 		if (this.debug) {
 			System.out.println(debug);
 		}
 	}
-
-	/**
-	 * TODO:
-	 * 1. Add a turn system. Make sure to optimise if there are multiple spymasters
-	 * 2.
-	 */
-
 }

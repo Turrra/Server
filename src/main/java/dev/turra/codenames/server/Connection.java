@@ -7,6 +7,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
+/**
+ * Represents a connection to a client.
+ */
 public class Connection implements Runnable{
 
 	private Socket socket;
@@ -17,6 +20,11 @@ public class Connection implements Runnable{
 	private IPacketListener listener;
 	private boolean running = false;
 
+	/**
+	 * Creates a new connection.
+	 * @param socket The socket to use.
+	 * @param id The ID of the player.
+	 */
 	public Connection(Socket socket, int id) {
 		this.socket = socket;
 		this.id = id;
@@ -30,6 +38,9 @@ public class Connection implements Runnable{
 		}
 	}
 
+	/**
+	 * Runs the connection.
+	 */
 	@Override
 	public void run() {
 		try {
@@ -49,6 +60,9 @@ public class Connection implements Runnable{
 		}
 	}
 
+	/**
+	 * Closes the connection.
+	 */
 	public void close() {
 		try {
 			running = false;
@@ -61,7 +75,11 @@ public class Connection implements Runnable{
 		}
 	}
 
-	public void sendPacket(Object packet) {
+	/**
+	 * Sends a packet to the client.
+	 * @param packet The packet to send.
+	 */
+	public void sendPacket(Packet packet) {
 		if(socket.isClosed())
 			return;
 
